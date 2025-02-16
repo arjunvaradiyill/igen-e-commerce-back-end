@@ -8,19 +8,31 @@ const session = require("express-session");
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 
-// 🔹 Session Setup
+// ✅ CORS Configuration 
 app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "defaultSecretKey", // Use .env for security
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false, httpOnly: true, maxAge: 3600000 },
+  cors({
+    origin: ["https://i-genecommercefrontend.onrender.com"], // ✅ Replace with your frontend URL
+    credentials: true, 
   })
 );
 
-// 🔹 MongoDB Connection
+// ✅ Express Session Setup
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "defaultSecretKey", 
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: process.env.NODE_ENV === "production", // 🔹 Secure cookies in production
+      httpOnly: true,
+      sameSite: "none",
+      maxAge: 3600000,
+    },
+  })
+);
+
+// ✅ Connect to MongoDB (Render Database URL)
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
   console.error("❌ MONGO_URI is missing in .env file");
@@ -35,7 +47,7 @@ mongoose
     process.exit(1);
   });
 
-// 🔹 User Schema
+// ✅ User Schema
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -43,7 +55,7 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model("User", UserSchema);
 
-// 🔹 Middleware for Authentication
+// ✅ Middleware for Authentication
 const checkLogin = (req, res, next) => {
   if (!req.session.user) {
     return res.status(401).json({ message: "Please log in first" });
@@ -51,7 +63,7 @@ const checkLogin = (req, res, next) => {
   next();
 };
 
-// 🔹 Login API
+// ✅ Login API
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -73,12 +85,12 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// 🔹 Check Login API
+// ✅ Check Login API
 app.get("/checkLogin", checkLogin, (req, res) => {
   res.status(200).json({ message: "User is logged in" });
 });
 
-// 🔹 Logout API
+// ✅ Logout API
 app.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) return res.status(500).json({ message: "Error logging out" });
@@ -86,20 +98,19 @@ app.post("/logout", (req, res) => {
   });
 });
 
-// ======================================
-// 🔹 PRODUCT MANAGEMENT API
-// ======================================
+// ===============================
+// ✅ PRODUCT MANAGEMENT API
+// ===============================
 
-// 🔹 Product Schema
+// ✅ Product Schema
 const ProductSchema = new mongoose.Schema({
   name: { type: String, required: true },
   price: { type: Number, required: true },
   description: { type: String },
 });
-
 const Product = mongoose.model("Product", ProductSchema);
 
-// 🔹 Get All Products
+// ✅ Get All Products
 app.get("/products", async (req, res) => {
   try {
     const products = await Product.find();
@@ -109,14 +120,14 @@ app.get("/products", async (req, res) => {
   }
 });
 
-// 🔹 Add a Product
+// ✅ Add a Product
 app.post("/products", async (req, res) => {
   try {
     const { name, price, description } = req.body;
     if (!name || !price) {
       return res.status(400).json({ message: "Name and price are required" });
     }
-    
+
     const newProduct = new Product({ name, price, description });
     await newProduct.save();
     res.status(201).json({ message: "Product added successfully", product: newProduct });
@@ -125,7 +136,7 @@ app.post("/products", async (req, res) => {
   }
 });
 
-// 🔹 Update Product by ID
+// ✅ Update Product by ID
 app.put("/products/:id", async (req, res) => {
   try {
     const { name, price, description } = req.body;
@@ -144,7 +155,8 @@ app.put("/products/:id", async (req, res) => {
     res.status(500).json({ message: "Error updating product" });
   }
 });
-// 🔹 Delete All Products
+
+// ✅ Delete All Products
 app.delete("/products", async (req, res) => {
   try {
     await Product.deleteMany({});
@@ -154,7 +166,7 @@ app.delete("/products", async (req, res) => {
   }
 });
 
-// 🔹 Delete Product by ID
+// ✅ Delete Product by ID
 app.delete("/products/:id", async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
@@ -169,6 +181,11 @@ app.delete("/products/:id", async (req, res) => {
   }
 });
 
-// 🔹 Start Server
+// ✅ Default Route
+app.get("/", (req, res) => {
+  res.send("Welcome to the E-Commerce API! 🎉");
+});
+
+// ✅ Start Server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
